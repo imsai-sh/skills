@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 编辑器临时
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Claude Code 本地状态（如果有人在仓库里跑 Claude Code）
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
