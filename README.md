@@ -1,20 +1,27 @@
 # skills
 
+> 中文版：[README.zh.md](README.zh.md)
 
-## 已收录
+A collection of [Agent Skills](https://agentskills.io/specification) for Claude Code, Codex, Cursor, Gemini CLI, and other Agent Skills-compatible tools.
 
-| Skill | 用途 |
+## Skills
+
+| Skill | What it does |
 |---|---|
-| [ios-icp-filing](./ios-icp-filing/SKILL.md) | 从已签名 IPA 反查 Bundle ID / SHA-1 / 公钥 modulus，按腾讯云 / 阿里云 / 华为云 ICP 备案表单格式输出 |
+| [ios-icp-filing](./ios-icp-filing/SKILL.md) | Extract Bundle ID, distribution-cert SHA-1, and RSA public-key modulus from a signed IPA, formatted for Tencent Cloud / Aliyun / Huawei Cloud ICP filing forms |
+| [finish-worktree](./finish-worktree/SKILL.md) | Merge the current worktree's changes back to main and clean up the worktree + branch. Auto-detects nested child repos and handles them child-first, parent-second. Never pushes by default |
+| [discard-worktree](./discard-worktree/SKILL.md) | Destructively discard all changes in the current worktree (committed or not), delete the worktree and branch. Same nested-repo handling, reverse-order cleanup |
+| [git-worktree-setup](./git-worktree-setup/SKILL.md) | Generate a tailored `setup-worktree.sh` + agent hook for your repo so new worktrees boot ready to run (`node_modules` symlinked / `.env` copied / dev port hashed / DB state shared or isolated) |
 
-## 安装
+## Install
 
-走 [Vercel Labs `skills` CLI](https://github.com/vercel-labs/skills)（开源生态标准，跨 50+ agent 平台）：
 
 ```bash
-npx skills add imsai-sh/skills          
+npx skills add imsai-sh/skills
+
+npx skills add imsai-sh/skills --skill git-worktree-setup
 ```
 
 ## License
 
-[MIT](./LICENSE) — 用、改、商用、二次分发都行，保留原作者声明即可。
+[MIT](./LICENSE) — use, modify, redistribute, even commercially. Keep the original copyright notice.

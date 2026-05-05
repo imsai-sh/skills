@@ -1,60 +1,60 @@
 ---
 name: ios-icp-filing
 description: |
-  从已签名的 iOS IPA 反查 Bundle ID、Distribution 证书 SHA-1 / MD5 指纹、RSA 公钥 modulus，
-  按腾讯云 / 阿里云 / 华为云 ICP/APP 备案表单要求的格式（空格分隔 hex / 连续 hex / PEM）输出。
-  触发场景：用户提到"ICP 备案"、"APP 备案"、"腾讯云备案"、"阿里云备案"、"华为云备案"、
-  "苹果平台 App 包信息"、"包名签名"、"公共密钥"、"应用签名 MD5"、"应用签名 SHA-1"，或问
-  "iOS app 用的是哪个证书"、"如何获取 iOS app 的公钥 / SHA1"、"备案表里的公钥怎么填"。
-  即使用户只模糊提"准备 iOS 上架中国大陆"或"备案需要的信息"，也应使用此 skill。
+  Extract Bundle ID, distribution-cert SHA-1 / MD5 fingerprints, and RSA public-key modulus
+  from a signed iOS IPA, formatted for Chinese cloud ICP/APP filing forms (Tencent Cloud /
+  Aliyun / Huawei Cloud — space-separated hex / continuous hex / PEM).
+  Triggers in Chinese: "ICP 备案", "APP 备案", "腾讯云备案", "阿里云备案", "华为云备案",
+  "苹果平台 App 包信息", "包名签名", "公共密钥", "应用签名 MD5", "应用签名 SHA-1",
+  "iOS app 用的是哪个证书", "如何获取 iOS app 的公钥 / SHA1", "备案表里的公钥怎么填".
+  In English: "iOS ICP filing", "ICP record submission", "China App Store filing",
+  "Bundle ID + signing cert + public key for ICP filing".
+  Even on vague mentions like "preparing iOS for China App Store" or "info needed for filing",
+  invoke this skill.
 tools: Bash, Read, Write
 ---
 
-# iOS App ICP/APP 备案信息提取
+# iOS App ICP/APP Filing Info Extraction
 
-中国大陆 App Store 上架前要做 ICP/APP 备案。腾讯云 / 阿里云 / 华为云的"新增苹果平台 App 包信息"
-表单都要三样东西：**Bundle ID + 证书 SHA-1 + RSA 公钥 modulus**。
+China-mainland App Store distribution requires ICP/APP filing. The "Add Apple-platform App Bundle Info" form on Tencent Cloud / Aliyun / Huawei Cloud all want the same three things: **Bundle ID + cert SHA-1 + RSA public-key modulus**.
 
-## 核心原则
+## Core principle
 
-**永远从实际 IPA 反查证书，不要从 developer.apple.com 证书页用肉眼挑。**
+**Always reverse-look up the cert from the actual IPA. Never eyeball-pick from the developer.apple.com cert page.**
 
-Xcode Cloud / fastlane 等会自动 rotate distribution 证书，团队可能同时有 2-3 张未过期的
-"Apple Distribution" cert。**只有 IPA 里 `embedded.mobileprovision` 引用的那张才是当前
-App Store 实际签名用的**——其余都是历史轮换残留，备案信息填错会被拒。
+Xcode Cloud / fastlane and friends auto-rotate distribution certs. A team often holds 2–3 unexpired "Apple Distribution" certs at the same time. **Only the cert referenced by the IPA's `embedded.mobileprovision` is the one currently signing the App Store build** — the others are rotation residue. Mis-fill the form and the filing gets rejected.
 
-## 流程
+## Workflow
 
-### Step 1: 拿到当前上架版本的 IPA
+### Step 1: Get the IPA of the currently-shipping version
 
-按可获得性排序：
+By availability:
 
-| 来源 | 取法 |
+| Source | How |
 |---|---|
-| Xcode Cloud archive 的 `app-store.zip` artifact | `asc xcode-cloud artifacts list --run-id <id>` 找 fileName 含 `app-store` 的，`asc xcode-cloud artifacts download --id <id> --path /tmp/x.zip` |
-| 本地 `xcodebuild -exportArchive` 输出（method=app-store-connect） | export 目录下的 `*.ipa` |
-| TestFlight build | App Store Connect Web 下载（流程繁琐，最后选项） |
+| Xcode Cloud archive's `app-store.zip` artifact | `asc xcode-cloud artifacts list --run-id <id>`, find the entry whose fileName contains `app-store`, then `asc xcode-cloud artifacts download --id <id> --path /tmp/x.zip` |
+| Local `xcodebuild -exportArchive` output (method=app-store-connect) | the `*.ipa` in the export dir |
+| TestFlight build | Download via App Store Connect Web (annoying — last resort) |
 
-> **重要**：选 `app-store` 签名的 IPA，**不要用 `ad-hoc` 或 `development`** — 后两者用的不是
-> Apple Distribution 证书，备案信息会与上架版本不匹配。
+> **Important**: use the `app-store`-signed IPA. **Don't use `ad-hoc` or `development`** — those use a different cert from Apple Distribution, and the filing info won't match the shipping build.
 
-### Step 2: 跑提取脚本
+### Step 2: Run the extraction script
 
 ```bash
 #!/bin/bash
 set -e
-IPA="/path/to/YourApp.ipa"   # ← 改这里
+IPA="/path/to/YourApp.ipa"   # ← edit this
 OUT=/tmp/icp-extract
 rm -rf "$OUT" && mkdir -p "$OUT"
 
-# 解 IPA → mobileprovision → DER 证书
+# Unpack IPA → mobileprovision → DER cert
 unzip -q "$IPA" -d "$OUT"
 APP=$(echo "$OUT"/Payload/*.app)
 security cms -D -i "$APP/embedded.mobileprovision" > "$OUT/profile.plist"
 plutil -extract DeveloperCertificates.0 raw -o - "$OUT/profile.plist" \
   | base64 -D > "$OUT/cert.cer"
 
-# Bundle ID（profile entitlement 带 team prefix，去掉前面的 TeamID.）
+# Bundle ID (the entitlement value carries a team prefix; strip the leading TeamID.)
 BUNDLE_ID=$(plutil -extract Entitlements.application-identifier raw -o - "$OUT/profile.plist" \
   | sed 's/^[A-Z0-9]*\.//')
 
@@ -62,77 +62,75 @@ echo "Bundle ID:  $BUNDLE_ID"
 openssl x509 -inform DER -in "$OUT/cert.cer" -subject -dates -noout
 
 echo ""
-echo "=== SHA-1 (3 种格式)==="
+echo "=== SHA-1 (3 formats) ==="
 SHA1=$(openssl x509 -inform DER -in "$OUT/cert.cer" -fingerprint -sha1 -noout | sed 's/sha1 Fingerprint=//')
-echo "冒号分隔: $SHA1"
-echo "连续 hex: $(echo "$SHA1" | tr -d ':')"
-echo "空格分隔: $(echo "$SHA1" | tr ':' ' ')"
+echo "colon-separated:  $SHA1"
+echo "continuous hex:   $(echo "$SHA1" | tr -d ':')"
+echo "space-separated:  $(echo "$SHA1" | tr ':' ' ')"
 
 echo ""
-echo "=== 公钥 modulus（RSA-2048 = 256 字节 = 512 hex chars）==="
+echo "=== Public-key modulus (RSA-2048 = 256 bytes = 512 hex chars) ==="
 MOD=$(openssl x509 -inform DER -in "$OUT/cert.cer" -modulus -noout | sed 's/Modulus=//')
-echo "连续 hex:"
+echo "continuous hex:"
 echo "$MOD"
 echo ""
-echo "空格分隔（macOS Keychain Access 风格，腾讯云 / 阿里云常用）:"
+echo "space-separated (macOS Keychain Access style — Tencent Cloud / Aliyun expect this):"
 echo "$MOD" | fold -w 2 | paste -sd ' ' -
 
 echo ""
-echo "=== 公钥 PEM（少数平台要）==="
+echo "=== Public-key PEM (a few platforms ask for this) ==="
 openssl x509 -inform DER -in "$OUT/cert.cer" -pubkey -noout
 
 echo ""
-echo "=== MD5 fingerprint（极少要）==="
+echo "=== MD5 fingerprint (rarely asked) ==="
 openssl x509 -inform DER -in "$OUT/cert.cer" -fingerprint -md5 -noout
 ```
 
-### Step 3: 按平台格式填表
+### Step 3: Fill the form per platform
 
-国内主流云厂商的"苹果平台 App 包信息"表单格式：
+The "Apple-platform App Bundle Info" form across the three big Chinese cloud vendors:
 
-| 字段 | 腾讯云 | 阿里云 | 华为云 |
+| Field | Tencent Cloud | Aliyun | Huawei Cloud |
 |---|---|---|---|
-| Bundle ID | 直接填 | 同 | 同 |
-| 公钥 / 公共密钥 | **空格分隔 hex modulus**（512 hex chars + 空格）| 同 | 同 |
-| 签名 SHA-1 | **空格分隔 hex**（40 hex chars + 空格）| 同 | 同 |
+| Bundle ID | as-is | same | same |
+| Public key / "公共密钥" | **space-separated hex modulus** (512 hex chars + spaces) | same | same |
+| Signing SHA-1 | **space-separated hex** (40 hex chars + spaces) | same | same |
 
-**常见字段名陷阱**：腾讯云字段标"**签名 MD5 值**"，但红字 placeholder 写"请输入 40 位长度的 SHA-1
-值（以 16 进制形式填写）"——**实际填 SHA-1，不是 MD5**。这是腾讯云历史命名 bug，按红字填。
+**Common label trap**: Tencent Cloud's field is labeled "**签名 MD5 值**" (signing MD5 value), but the red placeholder says "请输入 40 位长度的 SHA-1 值（以 16 进制形式填写）" (enter a 40-char SHA-1 value in hex). **Fill SHA-1, not MD5.** This is a Tencent Cloud legacy-naming bug — go by the red placeholder, not the label.
 
-## Common Mistakes
+## Common mistakes
 
-| 坑 | 修法 |
+| Pitfall | Fix |
 |---|---|
-| 从 Apple Developer 网站凭"过期日期最晚"挑 cert | 必从 IPA 反查；过期最晚不一定就是当前在用的 |
-| 公钥填 PEM 整段（带 `-----BEGIN/END-----`）| 填 hex modulus，不要 PEM |
-| 公钥填整个 SubjectPublicKeyInfo DER（588 hex chars）| 填 modulus（512 chars），表单标"256 字节"暗示是 modulus |
-| 字段名"签名 MD5 值" → 真填 MD5 fingerprint | 填 SHA-1，看红字 placeholder |
-| `ad-hoc` 或 `development` 签名的 IPA 反查 | 必须用 `app-store` 签名的 IPA |
-| 备案后 1 年证书过期没更新 | Apple Distribution cert 1 年期，自动 rotate；日历提前 30 天提醒重备 |
+| Picking the cert with the latest expiry from the Apple Developer site | Always reverse-look up from the IPA — latest-expiry isn't necessarily the one in use |
+| Pasting the full PEM (with `-----BEGIN/END-----`) into the public-key field | Fill hex modulus, not PEM |
+| Pasting the full SubjectPublicKeyInfo DER (588 hex chars) | Fill the modulus (512 chars) — the form's "256 bytes" hint means modulus |
+| Field labeled "签名 MD5 值" → filling actual MD5 fingerprint | Fill SHA-1 — read the red placeholder |
+| Using an `ad-hoc` or `development`-signed IPA for reverse lookup | Must be `app-store`-signed |
+| Cert expires 1 year after filing and isn't refreshed | Apple Distribution certs are 1-year and auto-rotate; calendar a re-filing reminder 30 days ahead |
 
-## 选哪份"公钥格式"？
+## Which "public-key format" to pick?
 
-| 表单提示 | 应填 |
+| Form hint | What to fill |
 |---|---|
-| "256 字节" / "公共密钥" 标签 | **空格分隔 modulus hex**（最常见，照搬 macOS Keychain Access 显示）|
-| "一串数字或十六进制字符串" | 优先空格分隔 modulus hex；不接受换连续 hex |
-| 明确说"PEM 格式" | PEM（带 `-----BEGIN PUBLIC KEY-----`）|
-| 明确说"DER base64" | PEM 去头尾的单行 base64 |
+| "256 bytes" / "公共密钥" label | **space-separated modulus hex** (most common — copy what macOS Keychain Access shows) |
+| "string of digits or hex" | prefer space-separated modulus hex; fall back to continuous hex if not accepted |
+| Explicit "PEM format" | PEM (with `-----BEGIN PUBLIC KEY-----`) |
+| Explicit "DER base64" | PEM stripped of headers, single-line base64 |
 
-## Bundle ID 兜底
+## Bundle ID fallback
 
-如果从 entitlements 取 Bundle ID 失败（profile 字段不一致），从 .app 的 Info.plist 取：
+If extracting Bundle ID from entitlements fails (profile field mismatch), grab it from the .app's Info.plist:
 
 ```bash
 plutil -extract CFBundleIdentifier raw -o - "$APP/Info.plist"
 ```
 
-## 验证
+## Verification
 
-填表前 sanity check：
+Sanity-check before filling:
 
-- SHA-1 应是 40 hex chars（去空格后）
-- modulus 对 RSA-2048 应是 512 hex chars（去空格后），256 字节
-- 证书 subject 应含 `Apple Distribution: <Team Name> (<TeamID>)`，**不应**是
-  `Apple Development:` 或 `Apple Distribution: ... (Developer ID)`
-- 证书有效期：`notAfter` 在 1 年内合理（Apple 标准期限）
+- SHA-1 should be 40 hex chars (after stripping spaces)
+- modulus for RSA-2048 should be 512 hex chars (after stripping spaces) = 256 bytes
+- cert subject should contain `Apple Distribution: <Team Name> (<TeamID>)`, **not** `Apple Development:` or `Apple Distribution: ... (Developer ID)`
+- cert validity: `notAfter` within 1 year is reasonable (Apple's standard window)
