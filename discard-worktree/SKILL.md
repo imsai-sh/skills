@@ -7,9 +7,17 @@ description: Use when the user wants to discard ALL changes in the current workt
 
 Discard any changes (committed-but-unmerged included) in this worktree, delete the worktree, and delete its branch. **Do not** merge back to main.
 
-## ⚠️ Destructive operation
+## Confirmation policy
 
-Before executing, **must** confirm with the user: list what's about to be discarded (number of uncommitted-changed files, count + list of unmerged commits). Only execute after explicit "confirm discard" / "yes, discard". **Once executed, irreversible.**
+Whether to ask first depends on whether anything would actually be lost:
+
+- **Nothing to lose** — no uncommitted changes AND no commits ahead of base. The discard is pure metadata + empty-branch cleanup. **Proceed without asking.**
+- **Something to lose** — any uncommitted change OR any commit ahead of base. List what's about to go (uncommitted file count, unmerged commit count + list) and require explicit "confirm discard" / "yes, discard" before running. **Irreversible once executed.**
+
+In nested mode, assess both sides **up-front** before touching anything. Cleanup is reverse-order (child first, parent next) and the child can't be un-removed if the user balks at the parent — so "silently clean the empty child first, then ask about the parent" is unsafe. Rule:
+
+- **Both sides empty** → both clean silently.
+- **Either side has content** → list both sides' state and require a single explicit "confirm discard" before any cleanup starts.
 
 ## 1. Detect whether this is a nested worktree
 
@@ -24,7 +32,10 @@ Otherwise go to §2a.
 ## 2a. Single-repo mode
 
 ```
-1. Show changes for user confirmation (git status + git log <main>..HEAD)
+1. Check state:
+   - `git status --porcelain` (uncommitted changes)
+   - `git log <main>..HEAD` (commits ahead)
+   Both empty → silent cleanup, no prompt. Either non-empty → list to user and wait for explicit "yes".
 2. cd to main repo
 3. git -C <main-repo> worktree remove --force <worktree path>
 4. git -C <main-repo> branch -D <branch>
@@ -36,10 +47,10 @@ Otherwise go to §2a.
 Why: the child worktree is nested inside the parent. The parent's `worktree remove` will trip on the child's `.git`. The child must be dismantled first.
 
 ```
-1. List both sides' changes for user confirmation:
-   - child worktree: git -C <parent-wt>/<child> status; git -C <parent-wt>/<child> log <child-main>..HEAD
-   - parent worktree: git -C <parent-wt> status; git -C <parent-wt> log <parent-main>..HEAD
-   wait for explicit "yes"
+1. Assess both sides up-front (cleanup is reverse-order; child can't be rolled back if parent stalls):
+   - child:  git -C <parent-wt>/<child> status --porcelain; git -C <parent-wt>/<child> log <child-main>..HEAD
+   - parent: git -C <parent-wt> status --porcelain;          git -C <parent-wt> log <parent-main>..HEAD
+   Both sides empty → skip confirmation, clean silently. Either side non-empty → list both sides and wait for one explicit "yes" before starting.
 
 2. Child cleanup (do first):
    git -C <child-main-repo> worktree remove --force <parent-wt>/<child>
@@ -58,7 +69,7 @@ Why: the child worktree is nested inside the parent. The parent's `worktree remo
 - `worktree remove --force` must include `--force`: worktrees contain symlinks + uncommitted changes that git judges unclean.
 - `branch -D` (capital D) force-deletes the branch, bypassing the unmerged-check — exactly what discard wants.
 - If one side's branch doesn't exist / the worktree was manually deleted → skip the corresponding step; `worktree prune` mops up the metadata.
-- **Irreversible**: after execution all the user's changes are lost. If the user hesitates, stop and ask before continuing.
+- **Irreversible (only matters when there's content)**: any uncommitted changes / unmerged commits are gone after execution. If the user hesitates on a side that has content, stop and ask before continuing.
 
 ## How this differs from finish-worktree
 
@@ -69,3 +80,4 @@ Why: the child worktree is nested inside the parent. The parent's `worktree remo
 | Merge | Child first, parent next, into main | No merge |
 | Push | Parent may push if user opts in; child asks user | Push nothing |
 | Cleanup | Reverse order (child first, parent next) | Reverse order (child first, parent next) |
+| Confirmation | Always confirms | Only when something would be lost |
