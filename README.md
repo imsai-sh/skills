@@ -13,6 +13,7 @@ A collection of [Agent Skills](https://agentskills.io/specification) for Claude 
 | [discard-worktree](./discard-worktree/SKILL.md) | Destructively discard all changes in the current worktree (committed or not), delete the worktree and branch. Same nested-repo handling, reverse-order cleanup |
 | [git-worktree-setup](./git-worktree-setup/SKILL.md) | Generate a tailored `setup-worktree.sh` + agent hook for your repo so new worktrees boot ready to run (`node_modules` symlinked / `.env` copied / dev port hashed / DB state shared or isolated) |
 | [claude-code-cli-reference](./claude-code-cli-reference/SKILL.md) | Local mirror of the official Claude Code CLI reference — subcommands, flags, common one-line recipes, print-mode-only flags, gotchas. Look up `claude ...` syntax without loading the upstream doc |
+| [volcengine-rtc-docs](./volcengine-rtc-docs/SKILL.md) | VolcEngine RTC (火山引擎实时音视频) documentation, split into 248 TOC-indexed PDFs. Covers core RTC SDK, AI voice agents, hardware-side agents, RTS signaling, whiteboard, legacy IM. PDFs are git-LFS-tracked (~128MB) |
 
 ## Install
 
