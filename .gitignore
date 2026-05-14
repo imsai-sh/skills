@@ -10,6 +10,10 @@
 .idea/
 .vscode/
 
+# Python 缓存（来自 volcengine-rtc-docs/scripts 等本地脚本）
+__pycache__/
+*.pyc
+
 # Claude Code 本地状态（如果有人在仓库里跑 Claude Code）
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
