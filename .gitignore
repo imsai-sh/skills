@@ -13,3 +13,7 @@
 # Claude Code 本地状态（如果有人在仓库里跑 Claude Code）
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+
+.omc
+
+.claude/worktrees
