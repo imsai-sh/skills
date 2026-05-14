@@ -12,6 +12,7 @@ A collection of [Agent Skills](https://agentskills.io/specification) for Claude 
 | [finish-worktree](./finish-worktree/SKILL.md) | Merge the current worktree's changes back to main and clean up the worktree + branch. Auto-detects nested child repos and handles them child-first, parent-second. Never pushes by default |
 | [discard-worktree](./discard-worktree/SKILL.md) | Destructively discard all changes in the current worktree (committed or not), delete the worktree and branch. Same nested-repo handling, reverse-order cleanup |
 | [git-worktree-setup](./git-worktree-setup/SKILL.md) | Generate a tailored `setup-worktree.sh` + agent hook for your repo so new worktrees boot ready to run (`node_modules` symlinked / `.env` copied / dev port hashed / DB state shared or isolated) |
+| [claude-code-cli-reference](./claude-code-cli-reference/SKILL.md) | Local mirror of the official Claude Code CLI reference — subcommands, flags, common one-line recipes, print-mode-only flags, gotchas. Look up `claude ...` syntax without loading the upstream doc |
 
 ## Install
 
