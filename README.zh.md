@@ -13,6 +13,7 @@
 | [discard-worktree](./discard-worktree/SKILL.zh.md) | 销毁性丢弃当前 worktree 的所有改动（含已 commit 未合并），删除 worktree 和分支；同样支持嵌套子仓库的反序清理 |
 | [git-worktree-setup](./git-worktree-setup/SKILL.zh.md) | 为目标仓库生成定制 `setup-worktree.sh` + 配套 hook，让新 worktree 一开就能跑（`node_modules` 软链 / `.env` 拷贝 / dev port 哈希分配 / DB state 共享或隔离） |
 | [claude-code-cli-reference](./claude-code-cli-reference/SKILL.zh.md) | Claude Code CLI 官方文档本地镜像 —— 子命令、flag、常用组合、print 模式专用 flag、坑点速查；离线查阅且不用拉远端文档 |
+| [volcengine-rtc-docs](./volcengine-rtc-docs/SKILL.zh.md) | 火山引擎实时音视频（VolcEngine RTC）官方文档本地副本，按目录切成 248 个 PDF。覆盖核心 RTC SDK、AI 语音 agent、硬件对话智能体、RTS 实时信令、互动白板、旧版 IM；PDF 通过 git LFS 管理（~128MB） |
 
 ## 安装
 
