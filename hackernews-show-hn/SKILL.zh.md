@@ -1,5 +1,5 @@
 ---
-name: submit-show-hn
+name: hackernews-show-hn
 description: Use when the user is preparing or troubleshooting a Hacker News Show HN submission. Covers the silent new-account throttle (showlim redirect), community karma thresholds, account-warming timeline, what to do if a post got shadowbanned, and how to write a Show HN that doesn't get flagged. Also covers when Show HN is the wrong format vs. a regular submission.
 ---
 
